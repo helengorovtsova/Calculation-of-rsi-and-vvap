@@ -40,7 +40,7 @@ class BinanceWebSocketConn(websocket.WebSocketApp):
         return rsi
 
     def on_open(self, ws):
-        print("Websocket connection opened.")
+        print("Websocket opened (binance)")
     
     def on_message(self, ws, message):
 
@@ -71,11 +71,20 @@ class BitfinexWebSocketConn(websocket.WebSocketApp):
                          on_error=self.on_error, 
                          on_close=self.on_close)
         
-        self.candles = pd.DataFrame(columns=['timestamp', 'open', 'close', 'high', 'low', 'volume'])
+        self.candles = pd.DataFrame(
+            columns=
+            [
+                'timestamp', 
+                'open', 
+                'close', 
+                'high', 
+                'low', 
+                'volume'
+            ]
+        )
 
     def on_open(self, ws):
-        print("WebSocket opened")
-        # Подписываемся на данные по валютной паре BTC/USDT с интервалом 1 минута
+        print("WebSocket opened (bitfinex)")
         subscribe_msg = {
             "event": "subscribe",
             "channel": "candles",
@@ -86,12 +95,33 @@ class BitfinexWebSocketConn(websocket.WebSocketApp):
     def on_message(self, ws, message):
         data = loads(message)
 
-        # Проверяем, является ли сообщение данными о свече
-        if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list) and len(data[1]) >= 6:
+        if isinstance(data, list) and len(data) > 1 \
+            and isinstance(data[1], list) and len(data[1]) >= 6:
             timestamp, open_price, close_price, high_price, low_price, volume = data[1]
-            new_candle = pd.DataFrame([[timestamp, open_price, close_price, high_price, low_price, volume]],
-                                    columns=['timestamp', 'open', 'close', 'high', 'low', 'volume'])
-            new_candle['timestamp'] = pd.to_datetime(new_candle['timestamp'], unit='ms', errors='coerce')
+            new_candle = pd.DataFrame(
+                [
+                    [
+                        timestamp, 
+                        open_price, 
+                        close_price, 
+                        high_price, 
+                        low_price, 
+                        volume
+                    ]
+                ],
+                columns=[
+                    'timestamp', 
+                    'open', 
+                    'close', 
+                    'high', 
+                    'low', 
+                    'volume'
+                ]
+            )
+
+            new_candle['timestamp'] = pd.to_datetime(new_candle['timestamp'], 
+                                                    unit='ms', errors='coerce')
+            
             new_candle.set_index(pd.DatetimeIndex(new_candle["timestamp"]), inplace=True)
             new_candle.sort_index()
             
@@ -100,7 +130,12 @@ class BitfinexWebSocketConn(websocket.WebSocketApp):
             else:
                 self.candles = pd.concat([self.candles, new_candle], ignore_index=False)
 
-            vwap = ta.vwap(self.candles['high'], self.candles['low'], self.candles['close'], self.candles['volume'])
+            vwap = ta.vwap(
+                self.candles['high'], 
+                self.candles['low'], 
+                self.candles['close'], 
+                self.candles['volume']
+            )
             print(f"Close price of Bitfinex: {self.candles['close'].iloc[-1]}, VWAPvwap: {vwap.iloc[-1]}")
     
     def on_error(self, ws, error):
@@ -124,7 +159,7 @@ async def main():
     loop.run_in_executor(None, bitfinex_ws.run_forever)
 
     while True:
-        await asyncio.sleep(1)  # Допустим, мы хотим проверять каждую секунду
+        await asyncio.sleep(1) 
 
 if __name__ == "__main__":
     asyncio.run(main())
